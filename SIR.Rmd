@@ -1,0 +1,302 @@
+---
+title: "SIR Model"
+author: "Kosay"
+date: "11/13/2022"
+output: html_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Epidemic Models
+
+We assume that the infection depends on contact between infected and susceptible individuals. The infection does not depend on personality factors (age, gender, and race). Also, the model is homogenous mixing in the community, and the population size is fixed (no immigration nor new births). When an individual dies because of the infection, the individual will belong to the removed individuals.
+
+1. $S(t)$ is the number of susceptible individuals at time $t$,
+2. $I(t)$ is the number of infectious individuals at time $t$,
+3. $R(t)$ is the number of removed (and immune) or deceased individuals at time $t$,
+4. N is the community size, and it is fixed. We assume $N$ is big enough to accept the S(t), I(t), and R(t) are differentiatable functions.
+
+
+We will use fractions of susceptible, infected, and removed individuals. $s(t) = S(t)/N$, $i(t) = I(t)/N$, and $R(t) = r(t)/N$.
+
+- Infection transmissibility $p$ is the probability of infection when a susceptible individual contacts an infected individual,
+
+- An effective contact is a contact between a susceptible and an infected individual, in which the susceptible individual becomes infected,
+
+- The total contact number $k$ is the mean number of contacts, effective or not effective, for an infected individual per unit time, and it is a constant,
+
+- Let $\lambda = kp$. Since not all contacts cause infections, and the transmissibility is $p$, on average, each infected individual infects new $\lambda s(t)$ individuals per time unit.
+
+- $\gamma$ is the rate of newly removed individuals per infected individuals per time unit. It means mathematically:
+
+\begin{equation}
+\gamma = \lim_{\Delta t \to 0} \dfrac{R(t+\Delta t)-R(t)}{I(t) \Delta t } \qquad \qquad (1).
+\end{equation}
+
+
+If the conditions do not change (by a treatment or another reason), we can assume $\gamma$ is a constant. We assume $\gamma > 0$ is a constant,
+
+- The expected duration of infection $d$ is the mean number of time units for an infected individual to become removed. If an infected individual needs $d$ time unit to become removed, then $\gamma = \dfrac{1}{d} > 0$, 
+
+- The basic reproduction number $ R_{0} =\dfrac{\lambda}{\gamma} $ is the mean number of individuals infected directly by one infected individual where all other individuals are initially susceptibles. The infected individual infects in mean $R_0$ other individuals before being removed. We note that $R_0$ is dimensionless and not a rate parameter. It can be expressed as a product of the total contact rate $k$ by transmissibility $p$ by the mean duration of infections $d$. Since $\lambda = kp$, and $d = 1/\gamma$  we get.
+
+\begin{equation}\label{R0}
+	R_0=kpd = \dfrac{\lambda}{\gamma}.
+\end{equation}
+
+# SIR Models
+
+In this model Susceptible individual becomes infected then becomes removed.
+
+We want to find $s'(t)$, the derivative of $s(t)$. First, we want to find the sign of $s'(t)$. We assumed the community's size $N$ is fixed and big. There are no new susceptible individuals; only susceptible individuals become infected , so $s(t)$ is decreasing and $s'(t) < 0$.
+
+
+If each infected individuals interacts with $k$ individuals, and the transmissibility is $p$, then each infected individual infects $k p  s(t) =\lambda s(t)$. The number of new infected individuals per time unit is $\lambda s(t) I(t)$. The change in $S(t)$ per time $t$ is the derivative of $S(t)$ respect to $t$:
+
+ \begin{equation*}
+ 	S'(t) =\dfrac{d S(t)}{d  t}=- \lambda s(t) I(t) .
+ \end{equation*}
+
+By dividing both sides by $N$ and we get:
+
+ \begin{equation}\label{S} 
+ 	s'(t) = \dfrac{ds(t)}{dt}=- \lambda s(t) i(t) \qquad \qquad  \qquad (2).
+ \end{equation}
+ 
+ 
+In the same discussion, the derivative of $R(t)$ with respect to $t$ is the change in $R(t)$ at time $t$. It equals newly removed individuals at time $t$. 
+
+\begin{equation*}
+    R'(t) = \lim_{\Delta t \to 0}  \dfrac{R(t+\Delta t)-R(t)}{\Delta t}.
+\end{equation*}
+
+If we multiply numerator and denominator by $I(t) \neq 0$,
+
+\begin{equation}\label{RR}
+    \lim_{\Delta t \to 0}  \dfrac{R(t+\Delta t)-R(t)}{\Delta t} = \displaystyle{\lim_{\Delta t \to 0} \dfrac{R(t+\Delta t)-R(t) }{\Delta t I(t)}} I(t) \qquad \qquad (3),
+\end{equation}
+
+and divide both sides by $N$,
+
+\begin{equation}\label{Rr4}
+    \lim_{\Delta t \to 0}  \dfrac{r(t+\Delta t)-r(t)}{\Delta t} = \displaystyle{\lim_{\Delta t \to 0} \dfrac{R(t+\Delta t)-R(t) }{\Delta t I(t)}} i(t) \qquad \qquad (4).
+\end{equation}
+
+Substitute $\gamma$ from equation (1),  in equation (4).
+
+\begin{equation}\label{R}
+    r'(t)= \gamma  i(t) \qquad \qquad  \qquad  \qquad (5).
+\end{equation}
+
+We have $s'(t) = -\lambda s(t)i(t)$ and $i'(t) = \lambda s(t)i(t)-\gamma i(t)$. By dividing these two equation we get, $\dfrac{s'(t)}{r'(t)} = -\dfrac{\lambda}{\gamma}s(t)$. 
+
+But $R_0 = \dfrac{\lambda}{\gamma}$. We find the solution for $\dfrac{s'(t)}{r'(t)} = -R_0 s(t)$ is
+
+\begin{equation}\label{SR}
+    s(t)= s(0) e^{-R_0 r(t)} \qquad \qquad  \qquad  \qquad (6).
+\end{equation}
+ 
+## SIR solution
+There is no analytically solution for this model, but we can solve it numerically by using deSolve lib in R language.
+
+
+```{r SIR, echo=FALSE, message=FALSE, warning=FALSE}
+library(deSolve)
+
+## Create an SIR function
+sir <- function(time, state, parameters) {
+  
+  with(as.list(c(state, parameters)), {
+    
+    dS <- -beta * S * I
+    dI <-  beta * S * I - gamma * I
+    dR <-                 gamma * I
+    
+    return(list(c(dS, dI, dR)))
+  })
+}
+
+### Set parameters
+## Proportion in each compartment: Susceptible 0.9999, Infected 0.0001, Recovered 0
+init       <- c(S = 0.999, I = 0.001, R = 0.0)
+
+## beta: infection parameter; gamma: recovery parameter
+p =0.9
+k= 2
+
+gamma = 0.25
+
+## 
+beta = p * k
+
+parameters <- c(beta , gamma)
+## Time frame
+times_constant_k      <- seq(0, 100, by = 0.01)
+
+## Solve using ode (General Solver for Ordinary Differential Equations)
+out_constant_k <- ode(y = init, times = times_constant_k, func = sir, parms = parameters)
+## change to data frame
+out_constant_k <- as.data.frame(out_constant_k)
+## Delete time variable
+out_constant_k$time <- NULL
+## Plot
+matplot(x = times_constant_k, y = out_constant_k, type = "l",
+        xlab = "Time", ylab = "Susceptible and Recovered", 
+        main = "SIR Model",
+        lwd = 1, lty = 1, bty = "l", col = 2:4)
+
+## Add legend
+legend(40, 0.7, c("Susceptible", "Infected", "Recovered"), pch = 1, col = 2:4, bty = "n")
+
+```
+
+
+
+Figure 1 is a plot for the solution for SIR model when $N = 1000$, $S(0) = 999$, $I(0) = 1$, and $R(0)=0$. For instance, the parameters are $\gamma = 0.25$, $k = 2$, and $p= 0.9$ this implies $\lambda = 2*0.9 = 1.8$. The  
+
+## The number of infected individuals  during the epidemic
+
+The epidemic will end when there is no infection fraction $i(t)=0$, and there are only susceptible and removed fractions. Mathematically, the epidemic will end as $t \rightarrow \infty$. We have $s(t)+i(t)+r(t)=1$. We then get $s(\infty)+0+r(\infty)=1$, which implies $s(\infty)=1-r(\infty)$.\\
+
+We have from equation (6),  $s(t)= s(0) \exp{(-R_0 r(\infty))}$. By substituting this value in $s(\infty)=1-r(\infty)$ we get:
+
+\begin{equation}\label{RemovedNumber}
+  1-r(\infty)=s(0)\exp{(-R_0 r(\infty))} \qquad \qquad (7)  .
+\end{equation}
+
+Wang shows in his work about the Lambert function, that we can solve the equation $ax+b+ce^{dx}=0$ (with $ad \neq 0$) expressed in terms of the Lambert function. The solution for this equation is:
+
+\begin{equation}\label{generalSolution}
+   x = - \frac{b}{a}- \frac{1}{d} W\left (\dfrac{cd e^{-bd/a}}{a}\right)  \qquad \qquad (8)
+\end{equation}
+
+In our situation for which $1-r(\infty)=s(0)e^{-R_0 r(\infty)}$, obviously,
+
+\begin{equation}\label{Lambert2}
+    r(\infty) -1 +s(0)e^{-R_0 r(\infty)}=0  \qquad \qquad (9)
+\end{equation}
+
+In this case $ a= 1 $ , $ b = -1$, $ c = s(0) $, and $ d = -R_0$. We get the solution,
+
+\begin{equation}\label{LambertFinalR}
+    r(\infty) = 1+ \dfrac{W(-s(0) R_0 e^{-R_0})}{R_0}  \qquad \qquad (10)
+\end{equation}
+
+From equation (10), we can get $s(\infty)$, and it refers to survivor individuals, who have not been infected during the epidemic. We can compare two epidemic outbreaks using the $s(\infty)$ value. A low value of $s(\infty)$ means the epidemic outbreak is larg,
+
+\begin{equation}\label{LambertFinalS}
+    s(\infty) = - \dfrac{W(-s(0) R_0 e^{-R_0})}{R_0}  \qquad \qquad (11).
+\end{equation}
+
+
+
+
+
+## Different $k$ values
+We consider the dynamics for different values of $k$, for instance, $k=2$, and $k=10$, respectively, and other parameters are fixed. Assume $\gamma = 0.25$, $s(0) = 0.9999$, $i(0) = 0.0001$, and , $p=0.9$.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, plotSIRforK=2}
+gamma = 0.25
+k = 2
+## 
+beta = p * k
+
+parameters <- c(beta , gamma)
+## Time frame
+times_constant_k      <- seq(0, 100, by = 0.01)
+
+## Solve using ode (General Solver for Ordinary Differential Equations)
+out_constant_k <- ode(y = init, times = times_constant_k, func = sir, parms = parameters)
+## change to data frame
+out_constant_k <- as.data.frame(out_constant_k)
+## Delete time variable
+out_constant_k$time <- NULL
+## Plot
+matplot(x = times_constant_k, y = out_constant_k, type = "l",
+        xlab = "Time", ylab = "Susceptible and Recovered", 
+        main = "SIR Model with k = 2",
+        lwd = 1, lty = 1, bty = "l", col = 2:4)
+
+## Add legend
+legend(40, 0.7, c("Susceptible", "Infected", "Recovered"), pch = 1, col = 2:4, bty = "n")
+
+```
+
+
+In figure (2), the total contact number $k=2$. 
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, plotSIRforK=10}
+gamma = 0.25
+k = 10
+## 
+beta = p * k
+
+parameters <- c(beta , gamma)
+## Time frame
+times_constant_k      <- seq(0, 100, by = 0.01)
+
+## Solve using ode (General Solver for Ordinary Differential Equations)
+out_constant_k <- ode(y = init, times = times_constant_k, func = sir, parms = parameters)
+## change to data frame
+out_constant_k <- as.data.frame(out_constant_k)
+## Delete time variable
+out_constant_k$time <- NULL
+## Plot
+matplot(x = times_constant_k, y = out_constant_k, type = "l",
+        xlab = "Time", ylab = "Susceptible and Recovered", 
+        main = "SIR Model with k = 10",
+        lwd = 1, lty = 1, bty = "l", col = 2:4)
+
+## Add legend
+legend(40, 0.7, c("Susceptible", "Infected", "Recovered"), pch = 1, col = 2:4, bty = "n")
+
+```
+
+In figure (3), the total contact number $k=10$.
+
+We can reduce the total contact number by decreasing the contact between people, like working remotely, meeting through the internet instead of physical meetings, and closing schools and universities during the epidemic.\\
+
+For the first case $\lambda = pk = 0.9\cdot 2 = 1.8$, and $R_0 = \dfrac{1.8}{0.25} = 7.2$. When $k = 10$ then $\lambda = 0.9 \cdot 10 = 9$ and $R_0 = \dfrac{9}{0.25} = 36$.
+
+For instance, the Lambert function $W$ can be calculated by Mathematica for instance which then gives the following results. For total contact number $k=2$ then,
+\begin{equation}
+    s(\infty) = - \dfrac{W(-7.2(1-10^{-4})e^{-7.2})}{7.2} = 0.000750556,
+\end{equation}
+
+while if $k=10$ the 
+
+\begin{equation}
+   s(\infty) = - \dfrac{W(-9(1-10^{-4}) e^{-9})}{9} =  0.0001235.
+\end{equation}
+
+If the total contact number increases from $k=2$ to $k=10$, the fraction of non-infected individuals will decrease from $0.000750556$ to $0.0001235$. This proves the importance of keeping distance between individuals and closing public meeting places (like schools). 
+
+In figure 5, we notice that increasing contact between individuals causes more infected individuals. When $k=0$, this means there is no contact between inviduals and the epidemic will not spread. Tthe epidemic will take off if $R_0 = \dfrac{pk}{\gamma} = \dfrac{0.95 k}{0.9} > 1$, so $k > 1$.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Load deSolve package
+library(pracma)
+
+p = 0.95
+gamma <- 0.9
+Y <- 1
+X <- 1
+s0 <- 1-1e-4
+j = seq(1, 8 , by = 0.1)
+for (k in j) {
+  beta <- k*p
+  R0 = beta / gamma
+  S <- -(lambertWp(-s0 * R0 * exp(-R0)))/R0
+  Y <- c(Y,S)
+  X <- c(X, k)
+}
+X <- X[-1]
+Y <- Y[-1]
+plot(X, Y, type = "l", ylab = "Fraction of never infected individuals", 
+     xlab = "Contact number")
+```
+
